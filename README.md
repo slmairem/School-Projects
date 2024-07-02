@@ -27,3 +27,4 @@ I wrote them in chronological order:**
 <ins> _**Third Year:**_</ins>
 - COMP3315 - Computer Organization ->> MIPS Assembly
 - SE2222 - Database System ->> MySQL
+- COMP 3323 - Operating Systems ->> C
