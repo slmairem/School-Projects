@@ -1,0 +1,190 @@
+Link: https://wokwi.com/projects/398860855720065025
+
+__
+
+#include <avr/io.h>
+#include <avr/interrupt.h>
+#include <util/delay.h>
+#include <stdlib.h>
+#include "DHT.h"
+#include "SevSeg.h"
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h> 
+#include <Adafruit_MPU6050.h>
+
+#define DHT_PIN PD1     
+#define DHT_TYPE DHT22  
+#define BUZZER_PIN  PD4   
+#define LED_PIN     PD5   
+
+DHT dht(DHT_PIN, DHT_TYPE);
+LiquidCrystal_I2C lcd(0x27, 20, 4); 
+Adafruit_MPU6050 mpu;
+
+volatile uint8_t alert_triggered = 0;
+
+//7-Segment Display 
+#define DIGIT1_PIN PB3
+#define DIGIT2_PIN PB2
+#define DIGIT3_PIN PB1
+#define DIGIT4_PIN PB0
+
+#define SEGMENT_PORT PORTD
+#define SEGMENT_DDR DDRD
+#define SEGMENT_PINS { PD0, PD1, PD2, PD3, PD4, PD5, PD6, PD7 } //(a, b, c, d, e, f, g, dp)
+//Ports are correct but a and b didn't work
+
+const uint8_t segmentPins[] = SEGMENT_PINS;
+
+const uint8_t digits[] = {
+    0b11000000, // 0
+    0b11111001, // 1
+    0b10100100, // 2
+    0b10110000, // 3
+    0b10011001, // 4
+    0b10010010, // 5
+    0b10000010, // 6
+    0b11111000, // 7
+    0b10000000, // 8
+    0b10010000  // 9
+};
+
+//Buzzer Functions
+void buzzer_init() {
+    DDRD |= (1 << BUZZER_PIN);  
+    buzzer_off();             
+}
+
+void buzzer_on() {
+    PORTD |= (1 << BUZZER_PIN); 
+}
+
+void buzzer_off() {
+    PORTD &= ~(1 << BUZZER_PIN);
+}
+
+//Led Functions
+void led_init() {
+    DDRB |= (1 << LED_PIN);   
+    led_off();                
+}
+
+void led_on() {
+    PORTB |= (1 << LED_PIN);   
+}
+
+void led_off() {
+    PORTB &= ~(1 << LED_PIN);  
+}
+
+//DHT Functions
+void dht_init() {
+    dht.begin();
+}
+
+float read_temperature() { 
+    float temp = dht.readTemperature();
+    if (isnan(temp)) {
+        temp = 37; // Placeholder value for testing
+    }
+    return temp; 
+}
+
+// Gyroscope Functions
+void gyroscope_init() {
+    if (!mpu.begin()) {
+        while (1) { 
+          delay(10); 
+        }
+    }
+    mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
+    mpu.setGyroRange(MPU6050_RANGE_2000_DEG);
+    mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+}
+
+int read_heart_rate() {
+    sensors_event_t a, g, temp;
+    mpu.getEvent(&a, &g, &temp);
+
+    return 150; // Placeholder value for testing
+}
+
+// 7-Segment Display Functions
+void display_digit(uint8_t digitPin, uint8_t value) {
+    SEGMENT_PORT = value; // Set the segments
+    PORTB |= (1 << digitPin); // Turn on the digit
+    _delay_ms(5);
+    PORTB &= ~(1 << digitPin); // Turn off the digit
+}
+
+void display_number(int number) {
+    int thousands = (number / 1000) % 10;
+    int hundreds = (number / 100) % 10;
+    int tens = (number / 10) % 10;
+    int units = number % 10;
+
+    for (int i = 0; i < 100; i++) { //For longer display change the "100"
+        display_digit(DIGIT1_PIN, digits[thousands]);
+        display_digit(DIGIT2_PIN, digits[hundreds]);
+        display_digit(DIGIT3_PIN, digits[tens]);
+        display_digit(DIGIT4_PIN, digits[units]);
+    }
+}
+
+// Setup Function
+void setup() {
+    // Digit pins as outputs
+    DDRB |= (1 << DIGIT1_PIN) | (1 << DIGIT2_PIN) | (1 << DIGIT3_PIN) | (1 << DIGIT4_PIN);
+    // Segment pins as outputs
+    SEGMENT_DDR = 0xFF; 
+
+    Serial.begin(9600); // Start the PORT
+    buzzer_init();
+    led_init();
+    dht_init(); 
+    lcd.begin(20, 4); 
+    lcd.backlight(); 
+    lcd.setCursor(0, 0);
+    lcd.print("Lie Detector Start"); 
+    _delay_ms(1000);
+    sei();     
+
+    gyroscope_init();
+}
+
+// Loop Function
+void loop() {
+    float body_temperature = read_temperature();
+    lcd.setCursor(0, 0);
+    lcd.print("Body Tempera: ");
+    lcd.print(body_temperature);
+
+    int heart_rate = read_heart_rate();
+    lcd.setCursor(0, 1);
+    lcd.print("Heart Rate: ");
+    lcd.print(heart_rate);
+
+    display_number(heart_rate); // Display heart rate on the 7-segment display
+
+    //Normal Body Temp Between 36~38, Normal Heart Rate 60~100 per min
+    if (body_temperature < 36 || body_temperature >= 38 ||
+      heart_rate<60 || heart_rate > 100) {
+        alert_triggered = 1;
+    } else {
+        alert_triggered = 0;
+    }
+
+    if (alert_triggered) {
+        buzzer_on();
+        led_on();
+        lcd.setCursor(0, 2);
+        lcd.print("Anomaly Detected");
+    } else {
+        buzzer_off();
+        led_off();
+        lcd.setCursor(0, 2);
+        lcd.print("Normal Rates   ");
+    }
+
+    _delay_ms(1000);
+}

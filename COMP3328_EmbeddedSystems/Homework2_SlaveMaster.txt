@@ -1,0 +1,57 @@
+Link: https://www.tinkercad.com/things/9JtLFZK5zKM-homework-2
+__
+
+#include <Wire.h>
+
+int ledPins[] = {2, 3, 4, 5, 6, 7, 8, 9}; 
+String response = ""; 
+bool isPostCommand = false; 
+
+void setup() {
+  Wire.begin(48); 
+  Wire.onReceive(receiveEvent);
+  Wire.onRequest(requestEvent);
+  
+  for (int i = 0; i < 8; i++) {
+    pinMode(ledPins[i], OUTPUT);
+    digitalWrite(ledPins[i], LOW); 
+  }
+}
+
+void loop() {
+}
+
+void receiveEvent(int howMany) {
+  int commandType = Wire.read(); 
+  if (commandType == 1) { 
+    isPostCommand = true;
+    int check = 0;
+    int port = Wire.read();
+      for (int i = 0; i < 8; i++) {
+        if (ledPins[i] == port) { 
+          digitalWrite(ledPins[i], HIGH); 
+          check++;
+        } 
+      response = "OK";
+    } 
+    if(check == 0)  {
+      response = "WRONG PORT";
+    }
+  } 
+  else if (commandType == 2) { // 2 = GET 
+    isPostCommand = false;
+  }
+}
+
+void requestEvent() {
+  if (isPostCommand) {
+    Wire.write(response.c_str());
+    response = ""; 
+  } else {
+    byte ledStatus = 0;
+    for (int i = 0; i < 8; i++) {
+      ledStatus |= (digitalRead(ledPins[i]) << i);
+    }
+    Wire.write(ledStatus);
+  }
+}

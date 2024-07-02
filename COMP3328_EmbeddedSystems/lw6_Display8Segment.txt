@@ -1,0 +1,86 @@
+Link: https://www.tinkercad.com/things/4G3HhLz4D52-frantic-bigery
+
+__
+
+void setup()
+{
+  asm(
+      ".equ DDRD,0x0A\n"
+      ".equ PORTD,0x0B\n"
+      ".equ SPH,0x3E\n"
+      ".equ SPL,0x3D\n"
+      "ldi r16,0xFF\n"
+      "out SPL,r16\n"
+      "ldi r16,7\n"
+      "out SPH,r16\n" 
+      
+	  // DON'T USE R18,R24,R25
+      "ldi r16,0b01111111\n"
+      "out DDRD, r16\n"
+      
+      // SET X,Y or Z POINTER REGISTER ADDRESS
+      "ldi r30, lo8(0x0200)\n"  // low
+      "ldi r31, hi8(0x0200)\n"  // high
+      
+       // STORE CORRECT VALUES ON REGISTER ADDRESS
+      "ldi r16, 0b00111111\n"  
+      "st Z+, r16\n"           // 0
+      "ldi r16,0b0000110\n"
+      "st Z+, r16\n"            // 1
+      "ldi r16,0b1011011\n"
+      "st Z+, r16\n"            // 2
+      "ldi r16,0b1001111\n"
+      "st Z+, r16\n"            // 3
+      "ldi r16,0b1100110\n"
+      "st Z+, r16\n"            // 4
+      "ldi r16,0b1101101\n"
+      "st Z+, r16\n"            // 5
+      "ldi r16,0b1111101\n"
+      "st Z+, r16\n"            // 6
+      "ldi r16,0b0000111\n"
+      "st Z+, r16\n"            // 7
+      "ldi r16,0b1111111\n"
+      "st Z+, r16\n"            // 8
+      "ldi r16,0b1101111\n"
+      "st Z, r16\n"             // 9, Last value
+      
+    
+      "ldi r30, lo8(0x0200)\n" // Z display memory
+      "ldi r31, hi8(0x0200)\n"
+    
+    // DISPLAY VALUES EVERY SECOND 
+    // (RCALL delay1s = delays hardware for 1 second),
+      "main_loop:\n"
+      "ld r16, Z+\n"           
+      "out PORTD, r16\n"        
+      "rcall delay1s\n"         
+      "cpi r16, 0b1101111\n"    
+      "brne not_last_digit\n"   
+      
+      "ldi r30, lo8(0x0200)\n" // Reset Display Memory
+      "ldi r31, hi8(0x0200)\n"
+    
+      "rjmp main_loop\n"        
+      "not_last_digit:\n"
+      "rjmp main_loop\n"        
+      
+  	  // DELAY PROCEDURE
+      "delay1s:\n"
+      "ldi r18,100\n"
+      "delay_loop:\n"
+      "ldi r24,0x3E\n"
+      "ldi r25,0x9C\n"
+      "delay_inner_loop:\n"
+      "sbiw r24,1\n"
+      "brne delay_inner_loop\n"
+      "nop\n"
+      "dec r18\n"
+      "brne delay_loop\n"
+      "ret\n"
+  );
+}
+
+void loop()
+{
+ 
+}
