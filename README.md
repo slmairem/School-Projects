@@ -28,3 +28,4 @@ I wrote them in chronological order:**
 - COMP3315 - Computer Organization ->> MIPS Assembly
 - SE2222 - Database System ->> MySQL
 - COMP 3323 - Operating Systems ->> C
+- COMP 3328 - Embedded Systems ->> Assembly, Arduino, Arduino C
